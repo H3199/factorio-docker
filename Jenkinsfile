@@ -1,10 +1,7 @@
 pipeline {
     agent any
     environment {
-        DOCKER_IMAGE = "factorio-server:latest"       // Image name for the Factorio server
-        CONTAINER_NAME = "factorio-server-container" // Name of the running container
-        SERVER_PORT = "34197"                        // Factorio server port
-        SERVER_VOLUME = "/home/eero/factorio-server" // Volume for the Factorio server
+        COMPOSE_FILE = "docker-compose.yml"
     }
     stages {
         stage('Checkout') {
@@ -12,31 +9,13 @@ pipeline {
                 checkout scm
             }
         }
-        stage('Build Docker Image') {
+        stage('Deploy with Docker-Compose') {
             steps {
                 script {
-                    // Build the Docker image using the repository's Dockerfile
                     sh """
-                    docker build -t ${DOCKER_IMAGE} .
-                    """
-                }
-            }
-        }
-        stage('Deploy Factorio Server') {
-            steps {
-                script {
-                    // Stop and remove the old container if it exists
-                    sh """
-                    docker stop ${CONTAINER_NAME} || true
-                    docker rm ${CONTAINER_NAME} || true
-                    """
-
-                    // Run the Factorio server container
-                    sh """
-                    docker run -d --name ${CONTAINER_NAME} \
-                    -p ${SERVER_PORT}:${SERVER_PORT}/udp \
-                    -v ${SERVER_VOLUME}:/factorio \
-                    ${DOCKER_IMAGE}
+                    docker-compose down || true
+                    docker-compose pull
+                    docker-compose up -d
                     """
                 }
             }
@@ -44,10 +23,10 @@ pipeline {
     }
     post {
         success {
-            echo 'Factorio server deployed successfully!'
+            echo 'Factorio server deployed successfully with Docker Compose!'
         }
         failure {
-            echo 'Build or deployment failed. Check logs for details.'
+            echo 'Deployment failed. Check the logs for details.'
         }
     }
 }
